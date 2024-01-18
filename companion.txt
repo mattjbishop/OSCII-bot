@@ -1,0 +1,53 @@
+// This script takes MIDI messages and converts them into OSC messages to be sent to
+// the Bitfocus Companion server. Tested with OSCII-bot v0.6 running on Windows 10.
+//
+// You can find the right OSC command for a button at the bottom of the config page for the button. There
+// are a few different types of message but the basic button press and release is 
+// oscsend(destdevice, "t/press/bank/<page>/<button>");
+//
+// This script listens for a "note on" on MIDI channel 1
+// The midi note sets the companion page (1-99)
+// The midi velocity sets the button to press (1-32)
+//
+// version 2, 08/12/2020, mbishop
+
+
+// the input should be a MIDI port named "OSCII" - this could be a loopMIDI port or an rtpMIDI endpoint
+@input midi_in MIDI "OSCII"
+
+// the OSC output is set to the bitfocus companion address. The OSC port is 12321
+@output companion OSC "10.100.1.162:12321"
+
+// the OSC output is also sent to port 8000 on the loopback address so that you can monitor the OSC 
+// messages if you need (using Protokol)
+@output localhost OSC "127.0.0.1:12321"
+
+@init
+
+// set destdevice to "localhost" if you want to monitor the output using Protokol, to "companion" to send
+// to the companion server, or set it to -1 if you want to send OSC to both outputs
+
+destdevice = localhost;
+
+
+@timer
+
+// no timer code needed
+
+
+@oscmsg
+
+// we are not processing incoming OSC messages
+
+
+@midimsg 
+
+// receive midi messages from ProPresenter (or wherever you want to trigger them from...)
+// msg1 == 0x90 is MIDI Note On Channel 1
+msg1 == 0x90 ? (
+
+  fmt0 = min(msg2, 99); // MIDI note - the page you want, max of 99  
+  fmt1 = min(msg3, 32); // Note velocity - the button you want to press, max of 32
+
+  oscsend(destdevice, "t/press/bank/%.0d/%.1d");
+);

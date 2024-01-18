@@ -1,0 +1,55 @@
+// This script takes CC messages from an LPD8 controller, and uses it to control the sends to 
+// the livestream bus
+//
+// version 1, 18/01/2024, mbishop
+
+// input is the controller
+@input lpd8_in MIDI "LPD8"
+
+@input x32_in MIDI "x32" // for testing
+
+// output is set to the OSC port of the x32 
+@output x32 OSC "10.100.1.225:10023"
+
+// the OSC output can also be sent to port 12321 on the loopback address so that you can monitor the OSC 
+// messages if you need (using Protokol)
+@output localhost OSC "127.0.0.1:12321"
+
+@init
+
+// set destdevice to "localhost" if you want to monitor the output using Protokol, to "x32" to send
+// to the mixer, or set it to -1 if you want to send OSC to both outputs
+
+destdevice = -1;
+
+@timer
+
+// no timer code needed
+
+// send changes in 0.1 increments
+
+@oscmsg
+
+// we are not processing incoming OSC messages
+
+@midimsg 
+// receive midi messages from the LPD8 controller
+// msg1 == 0xb0 CC message on channel 1
+// msg2 == Control number (0 to 127)
+// msg3 == Value (0 to 127)
+
+msg1 == 0xb0 ? (
+
+  fmt0 = min(msg2, 32); // CC control number - the channel you want to target, max of 32
+  
+  val = msg3 / 127.0; // convert the CC value into a float between 0.0 and 1.0
+
+  // might be useful to limit the rate of change here - catches the situation where the 
+  // LPD8 control is not in the same place as the x32 fader...
+  // put the new message values in variables and let the timer do the send?
+ 
+  oscsend(destdevice, "f/ch/%.02d/mix/07/level", val); // make sure that the channel is sent as 2 digits or you wont get channel 1-9 :-)
+  
+);
+
+

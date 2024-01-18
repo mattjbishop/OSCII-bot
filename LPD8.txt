@@ -1,0 +1,50 @@
+// This script takes MIDI messages from an LPD8 controller, only passing on MIDI messages
+// where the velocity (msg3) is over 70. It also rate limits the input using the time.
+//
+// version 1, 29/04/2023, mbishop
+
+// input is the controller
+@input lpd8_in MIDI "LPD8"
+
+// output is set to a loopMidi port
+@output lpd8_out MIDI "OSCII"
+
+@init
+
+last_t = time;
+
+framesize = 0.1;
+
+
+@timer
+
+// no timer code needed
+
+
+@oscmsg
+
+// we are not processing incoming OSC messages
+
+
+@midimsg 
+
+// if enough time has elapsed, process the message, otherwise let it drop
+time >= last_t + framesize ? (
+ 
+  // receive midi messages from the LPD8 controller
+  // msg1 == 0x90 is MIDI Note On Channel 1
+  // msg2 we don't care about (the note)
+  // msg3 is the velocity - we are only processing notes over 64
+  msg1 == 0x90 ? (
+    
+    // only pass the message on if the velocity is over 64 
+    msg3>70 ? (
+       midisend(lpd8_out);
+    );  
+  );
+
+  last_t += framesize;
+);
+
+
+
