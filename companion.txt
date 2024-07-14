@@ -1,16 +1,18 @@
 // This script takes MIDI messages and converts them into OSC messages to be sent to
-// the Bitfocus Companion server. Tested with OSCII-bot v0.6 running on Windows 10.
+// the Bitfocus Companion server. Tested with OSCII-bot v0.6 running on Windows 11.
 //
-// You can find the right OSC command for a button at the bottom of the config page for the button. There
+// You can find the right OSC command for a button in the Companion config section. There
 // are a few different types of message but the basic button press and release is 
-// oscsend(destdevice, "t/press/bank/<page>/<button>");
+// oscsend(destdevice, "t/location/<page>/<row>/<column>/press");
 //
 // This script listens for a "note on" on MIDI channel 1
 // The midi note sets the companion page (1-99)
-// The midi velocity sets the button to press (1-32)
+// The midi velocity sets the button - for a Companion grid with 5 columns and 3 rows:
+//   velocity 11 to 15 presses the buttons on the top row
+//   velocity 21 to 25 presses the buttons on the middle row
+//   velocity 31 to 35 presses the buttons on the bottom row
 //
-// version 2, 08/12/2020, mbishop
-
+// version 3, 14/07/2024, mbishop
 
 // the input should be a MIDI port named "OSCII" - this could be a loopMIDI port or an rtpMIDI endpoint
 @input midi_in MIDI "OSCII"
@@ -28,6 +30,10 @@
 // to the companion server, or set it to -1 if you want to send OSC to both outputs
 
 destdevice = localhost;
+
+// set up the dimensions of your grid in companion
+max_rows = 3;
+max_cols = 5;
 
 
 @timer
@@ -47,7 +53,17 @@ destdevice = localhost;
 msg1 == 0x90 ? (
 
   fmt0 = min(msg2, 99); // MIDI note - the page you want, max of 99  
-  fmt1 = min(msg3, 32); // Note velocity - the button you want to press, max of 32
 
-  oscsend(destdevice, "t/press/bank/%.0d/%.1d");
+  button = min(msg3, (max_rows * 10) + max_cols); // Note velocity - the button you want to press
+  row = max(floor(button / 10), 0);
+  column = max(floor(button % 10), 0);
+
+  row <= max_rows ? ( 
+    column <= max_cols ? (
+      fmt1 = row - 1;
+      fmt2 = column - 1;
+
+      oscsend(destdevice, "t/location/%.0d/%.1d/%.2d/press");
+    );
+  );
 );
